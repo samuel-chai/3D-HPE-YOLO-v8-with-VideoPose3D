@@ -1,3 +1,5 @@
 checkpoint/
 _pycahe_/
 weights/
+*.avi
+*.mp4

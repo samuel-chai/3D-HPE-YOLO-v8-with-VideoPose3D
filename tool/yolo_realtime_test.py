@@ -16,6 +16,8 @@ from itertools import zip_longest
 from mpl_toolkits.mplot3d import Axes3D # projection 3D 必须要这个
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+import matplotlib
+import torch
 
 
 
@@ -380,9 +382,9 @@ class TemporalModel(TemporalModelBase):
 def videopose_model_load():
     # load trained model
     chk_filename = main_path + '/checkpoint/cpn-pt-243.bin'
-    checkpoint = torch.load(chk_filename, map_location=lambda storage, loc: storage)# 把loc映射到storage
+    checkpoint = torch.load(chk_filename, map_location="cuda" if torch.cuda.is_available() else "cpu")
     model_pos = TemporalModel(17, 2, 17,filter_widths=[3,3,3,3,3] , causal=False, dropout=False, channels=1024, dense=False)
-    model_pos = model_pos.cuda()
+    model_pos = model_pos.cuda() if torch.cuda.is_available() else model_pos
     model_pos.load_state_dict(checkpoint['model_pos'])
     receptive_field = model_pos.receptive_field()
     return model_pos
@@ -495,7 +497,7 @@ def evaluate(test_generator, model_pos, action=None, return_predictions=False):
         model_pos.eval()
         N = 0
         for _, batch, batch_2d in test_generator.next_epoch():
-            inputs_2d = torch.from_numpy(batch_2d.astype('float32'))
+            inputs_2d = torch.from_numpy(batch_2d.astype('float32')).cuda() if torch.cuda.is_available() else torch.from_numpy(batch_2d.astype('float32'))
             if torch.cuda.is_available():
                 inputs_2d = inputs_2d.cuda()
             predicted_3d_pos = model_pos(inputs_2d)
