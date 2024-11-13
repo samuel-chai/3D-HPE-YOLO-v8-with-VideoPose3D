@@ -8,19 +8,36 @@ main_path = os.path.join(path, '..')
 
 
 class common():
-    keypoints_symmetry = [[1, 3, 5, 7, 9, 11, 13, 15],[2, 4, 6, 8, 10, 12, 14, 16]]
-    rot = np.array([ 0.14070565, -0.15007018, -0.7552408 ,  0.62232804], dtype=np.float32)
+    # 定义一个调色板数组，其中每个元素是一个包含RGB值的列表，用于表示不同的颜色
+    palette = np.array([[255, 128, 0], [255, 153, 51], [255, 178, 102],
+                        [230, 230, 0], [255, 153, 255], [153, 204, 255],
+                        [255, 102, 255], [255, 51, 255], [102, 178, 255],
+                        [51, 153, 255], [255, 153, 153], [255, 102, 102],
+                        [255, 51, 51], [153, 255, 153], [102, 255, 102],
+                        [51, 255, 51], [0, 255, 0], [0, 0, 255], [255, 0, 0],
+                        [255, 255, 255]])
     skeleton_parents =  np.array([-1,  0,  1,  2,  0,  4,  5,  0,  7,  8,  9,  8, 11, 12,  8, 14, 15])
-    pairs = [(1,2), (5,4),(6,5),(8,7),(8,9),(10,1),(11,10),(12,11),(13,1),(14,13),(15,14),(16,2),(16,3),(16,4),(16,7)]
 
-    kps_left, kps_right = list(keypoints_symmetry[0]), list(keypoints_symmetry[1])
-    joints_left, joints_right = list([4, 5, 6, 11, 12, 13]), list([1, 2, 3, 14, 15, 16])
-    pad = (243 - 1) // 2 # Padding on each side
-    causal_shift = 0
-    joint_pairs = [[0, 1], [1, 3], [0, 2], [2, 4],
+    # 定义人体17个关键点的连接顺序，每个子列表包含两个数字，代表要连接的关键点的索引, 1鼻子 2左眼 3右眼 4左耳 5右耳 6左肩 7右肩 8左肘 9右肘 10左手腕 11右手腕 12左髋 13右髋 14左膝 15右膝 16左踝 17右踝
+    skeleton = [[0, 1], [1, 3], [0, 2], [2, 4],
                 [5, 6], [5, 7], [7, 9], [6, 8], [8, 10],
                 [5, 11], [6, 12], [11, 12],
                 [11, 13], [12, 14], [13, 15], [14, 16]]
+    # 通过索引从调色板中选择颜色，用于绘制人体骨架的线条，每个索引对应一种颜色
+    pose_limb_color = palette[[9, 9, 9, 9, 7, 7, 7, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16]]
+    # 通过索引从调色板中选择颜色，用于绘制人体的关键点，每个索引对应一种颜色
+    pose_kpt_color = palette[[16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9]]
+    pad = (243 - 1) // 2 # Padding on each side
+    causal_shift = 0
+    
+    # 对称关节的定义（左、右）
+    kps_left = [1, 3, 5, 7, 9, 11, 13, 15]  # 左肩、左肘、左手腕、左髋、左膝、左踝
+    kps_right = [2, 4, 6, 8, 10, 12, 14, 16]  # 右肩、右肘、右手腕、右髋、右膝、右踝
+    
+    # 定义左关节和右关节（这些是更详细的关节连接用于对称处理）
+    joints_left = list([4, 5, 6, 11, 12, 13])  # 左肩、左肘、左手腕、左髋、左膝、左踝
+    joints_right = list([1, 2, 3, 14, 15, 16])  # 右肩、右肘、右手腕、右髋、右膝、右踝
+    rot = np.array([ 0.14070565, -0.15007018, -0.7552408 ,  0.62232804], dtype=np.float32)
 
 
 
@@ -57,25 +74,20 @@ def rotate_bound(image, angle):
     return cv2.warpAffine(image, M, (nW, nH))
 
 
-def draw_2Dimg(img, kpt, display=None):
-    # kpts : (17, 3)  3-->(x, y, score)
-    im = img.copy()
-    joint_pairs = common.joint_pairs
-    for item in kpt:
-        score = item[-1]
-        if score > 0.1:
-            x, y = int(item[0]), int(item[1])
-            cv2.circle(im, (x, y), 1, (255, 5, 0), 5)
-    for pair in joint_pairs:
-        j, j_parent = pair
-        pt1 = (int(kpt[j][0]), int(kpt[j][1]))
-        pt2 = (int(kpt[j_parent][0]), int(kpt[j_parent][1]))
-        cv2.line(im, pt1, pt2, (0,255,0), 2)
-
-    if display:
-        cv2.imshow('im', im)
-        cv2.waitKey(3)
-    return im
+def draw_2Dimg(image, model_path):
+    from yolo_detectors.yolov8_detection import Keypoint
+    model_path = 'weights/yolov8x-pose.onnx'
+    keypoint_detector = Keypoint(model_path)
+    keypoints_list = keypoint_detector.getkptsFromImg(image)
+    
+    if keypoints_list is None or len(keypoints_list) == 0:
+        print("沒有檢測到任何關鍵點")
+        return image  
+    
+    for keypoints in keypoints_list:
+        image = draw_2Dimg(image, keypoints)
+    
+    return image
 
 def draw_3Dimg(pos, image, display=None, kpt2D=None):
     from mpl_toolkits.mplot3d import Axes3D # projection 3D 必须要这个
@@ -153,24 +165,21 @@ def videoInfo(VideoName):
 def videopose_model_load():
     # 加载已训练的模型
     from common.model import TemporalModel
+    # load trained model
     chk_filename = main_path + '/checkpoint/cpn-pt-243.bin'
-    # 加载检查点文件，使用 map_location 来将权重加载到当前设备
-    checkpoint = torch.load(chk_filename, map_location=lambda storage, loc: storage)
-    # 创建 TemporalModel 实例，输入关键点数量为 17，输出关键点数量为 17
-    model_pos = TemporalModel(17, 2, 17, filter_widths=[3, 3, 3, 3, 3], causal=False, dropout=False, channels=1024, dense=False)
-    # 将模型移动到 GPU 上
-    model_pos = model_pos.cuda()
-    # 加载检查点中的模型权重
+    checkpoint = torch.load(chk_filename, map_location="cuda" if torch.cuda.is_available() else "cpu")
+    model_pos = TemporalModel(17, 2, 17,filter_widths=[3,3,3,3,3] , causal=False, dropout=False, channels=1024, dense=False)
+    model_pos = model_pos.cuda() if torch.cuda.is_available() else model_pos
     model_pos.load_state_dict(checkpoint['model_pos'])
-    # 获取模型的感受野
     receptive_field = model_pos.receptive_field()
     return model_pos
 
 
 def interface(model_pos, keypoints, W, H):
-    # 输入 (N, 17, 2)，返回 (N, 17, 3)
-    if not isinstance(keypoints, np.ndarray):
-        keypoints = np.array(keypoints)
+    # 检查并调整维度
+    if len(keypoints.shape) == 4:  # 如果形状是 (N, 1, 17, 3)
+        keypoints = keypoints.squeeze(1)  # 移除第二个维度，变成 (N, 17, 3)
+        keypoints = keypoints[..., :2]    # 只取前两个坐标值，变成 (N, 17, 2)
 
     # 从 common.camera 导入用于坐标转换的函数
     from common.camera import normalize_screen_coordinates_new, camera_to_world, normalize_screen_coordinates

@@ -11,12 +11,14 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from yolo_detectors.yolov8_detection import Keypoint
-from utils import videopose_model_load, interface, videoInfo, resize_img ,draw_3Dimg, draw_2Dimg
+from tool.utils import videopose_model_load as Model3Dload
+model3D = Model3Dload()
+from tool.utils import interface as VideoPoseInterface
+interface3D = VideoPoseInterface
+from tool.utils import draw_3Dimg, videoInfo, resize_img
 
 model_path = 'weights/yolov8x-pose.onnx'
 keydet = Keypoint(model_path)
-model3D = videopose_model_load()
-
 
 
 def main(VideoName):
@@ -49,7 +51,7 @@ def main(VideoName):
         else:
             kpt2Ds.append(joint2D)
                 
-        joint3D = interface(model3D, np.array(kpt2Ds), W, H)
+        joint3D = interface3D(model3D, np.array(kpt2Ds), W, H)
         joint3D_item = joint3D[-1] # (17, 3)
         processed_frame = draw_3Dimg(joint3D_item, frame, display=1, kpt2D=joint2D)
         processed_frames.append(processed_frame)
