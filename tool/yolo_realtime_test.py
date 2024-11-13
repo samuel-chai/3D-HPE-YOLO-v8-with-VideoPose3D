@@ -28,7 +28,7 @@ main_path = os.path.join(path, '..')
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from utils import videoInfo, resize_img, draw_2Dimg, draw_3Dimg
+from utilsCombine import videoInfo, resize_img, draw_2Dimg, draw_3Dimg
 
 class common():
     # 定义一个调色板数组，其中每个元素是一个包含RGB值的列表，用于表示不同的颜色
