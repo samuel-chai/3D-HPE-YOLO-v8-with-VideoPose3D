@@ -37,11 +37,13 @@ class common():
                         [255, 51, 51], [153, 255, 153], [102, 255, 102],
                         [51, 255, 51], [0, 255, 0], [0, 0, 255], [255, 0, 0],
                         [255, 255, 255]])
+    skeleton_parents =  np.array([-1,  0,  1,  2,  0,  4,  5,  0,  7,  8,  9,  8, 11, 12,  8, 14, 15])
+
     # 定义人体17个关键点的连接顺序，每个子列表包含两个数字，代表要连接的关键点的索引, 1鼻子 2左眼 3右眼 4左耳 5右耳 6左肩 7右肩 8左肘 9右肘 10左手腕 11右手腕 12左髋 13右髋 14左膝 15右膝 16左踝 17右踝
-    skeleton = [[16, 14], [14, 12], [17, 15], [15, 13], # 左右脚
-                [12, 13], [6, 12], [7, 13], # 身體
-                [6, 7], [6, 8], [7, 9], [8, 10], [9, 11], # 手臂
-                [2, 3], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7]]
+    skeleton = [[0, 1], [1, 3], [0, 2], [2, 4],
+                [5, 6], [5, 7], [7, 9], [6, 8], [8, 10],
+                [5, 11], [6, 12], [11, 12],
+                [11, 13], [12, 14], [13, 15], [14, 16]]
     # 通过索引从调色板中选择颜色，用于绘制人体骨架的线条，每个索引对应一种颜色
     pose_limb_color = palette[[9, 9, 9, 9, 7, 7, 7, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16]]
     # 通过索引从调色板中选择颜色，用于绘制人体的关键点，每个索引对应一种颜色
@@ -50,12 +52,12 @@ class common():
     causal_shift = 0
     
     # 对称关节的定义（左、右）
-    kps_left = [5, 7, 9, 11, 13, 15]  # 左肩、左肘、左手腕、左髋、左膝、左踝
-    kps_right = [6, 8, 10, 12, 14, 16]  # 右肩、右肘、右手腕、右髋、右膝、右踝
+    kps_left = [1, 3, 5, 7, 9, 11, 13, 15]  # 左肩、左肘、左手腕、左髋、左膝、左踝
+    kps_right = [2, 4, 6, 8, 10, 12, 14, 16]  # 右肩、右肘、右手腕、右髋、右膝、右踝
     
     # 定义左关节和右关节（这些是更详细的关节连接用于对称处理）
-    joints_left = [5, 7, 9, 11, 13, 15]
-    joints_right = [6, 8, 10, 12, 14, 16]
+    joints_left = list([4, 5, 6, 11, 12, 13])  # 左肩、左肘、左手腕、左髋、左膝、左踝
+    joints_right = list([1, 2, 3, 14, 15, 16])  # 右肩、右肘、右手腕、右髋、右膝、右踝
     rot = np.array([ 0.14070565, -0.15007018, -0.7552408 ,  0.62232804], dtype=np.float32)
 
 
@@ -582,29 +584,33 @@ def draw_3Dimg(pos, image, display=None, kpt2D=None):
     ax.set_yticklabels([])
     ax.set_zticklabels([])
     ax.dist = 7.5
-    skeleton = common.skeleton
+    parents = common.skeleton_parents
     joints_right = common.joints_right
 
-    # 確保 pos 是一個 NumPy 陣列
-    pos = np.array(pos)
+    # # 確保 pos 是一個 NumPy 陣列
+    # pos = np.array(pos)
 
-    # 檢查 pos 的形狀是否正確
-    if len(pos.shape) != 2 or pos.shape[1] != 3:
-        raise ValueError(f"pos 必須是形狀 (N, 3)，但是得到的形狀是 {pos.shape}")
+    # # 檢查 pos 的形狀是否正確
+    # if len(pos.shape) != 2 or pos.shape[1] != 3:
+    #     raise ValueError(f"pos 必須是形狀 (N, 3)，但是得到的形狀是 {pos.shape}")
 
-    # 繪製3D骨架
-    for idx, (j, j_parent) in enumerate(skeleton):
-        # 這裡的 `j` 和 `j_parent` 是基於1的索引，你需要減去1以適應 Python 的0基索引
-        j -= 1
-        j_parent -= 1
+    # # 繪製3D骨架
+    # for idx, (j, j_parent) in enumerate(skeleton):
+    #     # 這裡的 `j` 和 `j_parent` 是基於1的索引，你需要減去1以適應 Python 的0基索引
+    #     # j -= 1
+    #     # j_parent -= 1
 
-        # 檢查索引是否在範圍內
-        if j < 0 or j_parent < 0 or j >= len(pos) or j_parent >= len(pos):
+    #     # 檢查索引是否在範圍內
+    #     if j < 0 or j_parent < 0 or j >= len(pos) or j_parent >= len(pos):
+    #         continue
+
+    #     # 根據 joints_right 設置顏色
+    #     col = 'red' if j in joints_right or j_parent in joints_right else 'black'
+    for j, j_parent in enumerate(parents):
+        if j_parent == -1:
             continue
 
-        # 根據 joints_right 設置顏色
-        col = 'red' if j in joints_right or j_parent in joints_right else 'black'
-
+        col = 'red' if j in joints_right else 'black'
         # 繪製3D骨架連接
         ax.plot([pos[j, 0], pos[j_parent, 0]],
                 [pos[j, 1], pos[j_parent, 1]],
@@ -636,6 +642,10 @@ def main(VideoName):
             t0 = time.time()
             joint2D = np.array(keydet.getkptsFromImg(frame))
             print('YOLO consume {:0.3f} s'.format(time.time() - t0))
+            # 檢查形狀, 若數據不對跳過frame
+            if joint2D.shape[-2:] != (17, 3):
+                print("Skipping frame due to incorrect shape:", joint2D.shape)
+                continue
         except Exception as e:
             print(e)
             continue
