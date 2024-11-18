@@ -509,13 +509,17 @@ def evaluate(test_generator, model_pos, action=None, return_predictions=False):
                 return predicted_3d_pos.squeeze(0).cpu().numpy()
 
 def interface(model_pos, keypoints, W, H):
-
+    
     # 检查并调整维度
     if len(keypoints.shape) == 4:  # 如果形状是 (N, 1, 17, 3)
         keypoints = keypoints.squeeze(1)  # 移除第二个维度，变成 (N, 17, 3)
         keypoints = keypoints[..., :2]    # 只取前两个坐标值，变成 (N, 17, 2)
     
     print("Adjusted keypoints shape:", keypoints.shape)
+
+    if keypoints.shape[0] == 0:
+        print("No keypoints detected in this frame; skipping processing.")
+        return None  # Skip this frame and return None
     
     keypoints = normalize_screen_coordinates(keypoints[..., :2], w=1000, h=1002)
     input_keypoints = keypoints.copy()
@@ -662,6 +666,9 @@ def main(VideoName):
             kpt2Ds.append(joint2D)
                 
         joint3D = interface(model3D, np.array(kpt2Ds), W, H)
+        if joint3D is None:
+            print("Skipping frame due to no 3D pose detected.")
+            continue
         joint3D_item = joint3D[-1] # (17, 3)
         processed_frame = draw_3Dimg(joint3D_item, frame, display=1, kpt2D=joint2D)
         processed_frames.append(processed_frame)
