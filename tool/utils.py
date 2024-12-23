@@ -167,6 +167,9 @@ def videopose_model_load():
     from common.model import TemporalModel
     # load trained model
     chk_filename = main_path + '/checkpoint/cpn-pt-243.bin'
+    if not os.path.exists(chk_filename):
+        print(f"Checkpoint file {chk_filename} not found.")
+        return None
     checkpoint = torch.load(chk_filename, map_location="cuda" if torch.cuda.is_available() else "cpu")
     model_pos = TemporalModel(17, 2, 17,filter_widths=[3,3,3,3,3] , causal=False, dropout=False, channels=1024, dense=False)
     model_pos = model_pos.cuda() if torch.cuda.is_available() else model_pos
@@ -180,9 +183,14 @@ def interface(model_pos, keypoints, W, H):
     if len(keypoints.shape) == 4:  # 如果形状是 (N, 1, 17, 3)
         keypoints = keypoints.squeeze(1)  # 移除第二个维度，变成 (N, 17, 3)
         keypoints = keypoints[..., :2]    # 只取前两个坐标值，变成 (N, 17, 2)
+    
+    print("Adjusted keypoints shape:", keypoints.shape)
 
+    if keypoints.shape[0] == 0:
+        return None  # Skip this frame and return None
+    
     # 从 common.camera 导入用于坐标转换的函数
-    from common.camera import normalize_screen_coordinates_new, camera_to_world, normalize_screen_coordinates
+    from common.camera import camera_to_world, normalize_screen_coordinates
     # 将关键点进行归一化处理，使其适应网络输入要求
     keypoints = normalize_screen_coordinates(keypoints[..., :2], w=1000, h=1002)
     input_keypoints = keypoints.copy()

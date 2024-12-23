@@ -17,19 +17,20 @@ from tool.utils import interface as VideoPoseInterface
 interface3D = VideoPoseInterface
 from tool.utils import draw_3Dimg, videoInfo, resize_img
 
-model_path = 'weights/yolov8x-pose.onnx'
-keydet = Keypoint(model_path)
-
-
 def main(VideoName):
+    model_path = 'weights/yolov8x-pose.onnx'
+    keydet = Keypoint(model_path)
     cap, cap_length = videoInfo(VideoName)
     kpt2Ds = []
     processed_frames = []
 
     for i in tqdm(range(cap_length)):
-        _, frame = cap.read()
-        frame, W, H = resize_img(frame)
-
+        ret, frame = cap.read()
+        if not ret:
+            print(f"Frame {i} could not be read. Skipping.")
+            continue  # Skip if the frame could not be read        
+        frame, W, H = resize_img(frame) 
+        
         try:
             t0 = time.time()
             joint2D = np.array(keydet.getkptsFromImg(frame))
@@ -52,6 +53,9 @@ def main(VideoName):
             kpt2Ds.append(joint2D)
                 
         joint3D = interface3D(model3D, np.array(kpt2Ds), W, H)
+        if joint3D is None:
+            print("Skipping frame due to no 3D pose detected.")
+            continue
         joint3D_item = joint3D[-1] # (17, 3)
         processed_frame = draw_3Dimg(joint3D_item, frame, display=1, kpt2D=joint2D)
         processed_frames.append(processed_frame)
