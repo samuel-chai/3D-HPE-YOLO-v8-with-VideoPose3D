@@ -60,3 +60,9 @@ This project implements a 3D human pose estimation system using YOLO and deep le
 - Make sure to download and place the required model weights in the `weights` directory
 - Check camera calibration settings before running real-time detection
 - Refer to individual Python files for detailed documentation
+
+## Results
+
+Below is a demonstration of the 3D pose estimation results:
+
+![3D Pose Estimation Demo](gif/output-gym.gif)
