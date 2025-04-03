@@ -3,3 +3,5 @@ _pycahe_/
 weights/
 *.avi
 *.mp4
+*.pt
+*.onnx
